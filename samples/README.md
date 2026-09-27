@@ -1,0 +1,1 @@
+Synthetic fixtures only. Upload both follower files and following.json. Expected: 4 followers, 3 following, 2 mutuals, 1 account that does not follow back (sample_emma), and 2 accounts you do not follow back (sample_ben and sample_dylan). These names are fictional test labels, not assertions about any real Instagram accounts.

@@ -1,0 +1,34 @@
+{
+  "relationships_following": [
+    {
+      "title": "",
+      "string_list_data": [
+        {
+          "value": "sample_ava",
+          "href": "https://www.instagram.com/sample_ava/",
+          "timestamp": 1700000000
+        }
+      ]
+    },
+    {
+      "title": "",
+      "string_list_data": [
+        {
+          "value": "sample_cara",
+          "href": "https://www.instagram.com/sample_cara/",
+          "timestamp": 1700000000
+        }
+      ]
+    },
+    {
+      "title": "",
+      "string_list_data": [
+        {
+          "value": "sample_emma",
+          "href": "https://www.instagram.com/sample_emma/",
+          "timestamp": 1700000000
+        }
+      ]
+    }
+  ]
+}

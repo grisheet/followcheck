@@ -1,0 +1,9 @@
+import type { ComparisonResult, ResultTab } from '../types/instagram';
+export const tabs: { id: ResultTab; label: string; description: string; empty: string }[] = [
+  { id: 'notFollowingBack', label: 'Don’t Follow Back', description: 'Accounts you follow that aren’t in your follower list.', empty: 'Everyone you follow follows you back.' },
+  { id: 'notFollowedBack', label: 'You Don’t Follow Back', description: 'Accounts that follow you, but aren’t in your following list.', empty: 'You follow everyone who follows you.' },
+  { id: 'mutuals', label: 'Mutuals', description: 'You follow each other. A two-way connection.', empty: 'No mutual accounts in these files.' },
+  { id: 'followers', label: 'All Followers', description: 'All unique accounts in your uploaded follower files.', empty: 'No followers in this export.' },
+  { id: 'following', label: 'All Following', description: 'All unique accounts in your uploaded following files.', empty: 'No following accounts in this export.' },
+];
+export function ResultsTabs({ result, active, onChange }: { result: ComparisonResult; active: ResultTab; onChange: (tab: ResultTab) => void }) { return <div className="result-tabs" role="tablist" aria-label="Account lists">{tabs.map(({ id, label }, index) => <button key={id} id={`tab-${id}`} role="tab" aria-selected={active === id} aria-controls="account-panel" tabIndex={active === id ? 0 : -1} onClick={() => onChange(id)} onKeyDown={e => { let next = index; if (e.key === 'ArrowRight') next = (index + 1) % tabs.length; else if (e.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length; else if (e.key === 'Home') next = 0; else if (e.key === 'End') next = tabs.length - 1; else return; e.preventDefault(); onChange(tabs[next].id); document.getElementById(`tab-${tabs[next].id}`)?.focus(); }}><span>{label}</span><span className="tab-count">{result[id].length.toLocaleString()}</span></button>)}</div>; }

@@ -1,0 +1,64 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import App from '../src/App';
+import { UserList } from '../src/components/UserList';
+const data = (...names: string[]) => names.map(value => ({ string_list_data: [{ value }] }));
+const file = (name: string, content: unknown) => { const text = typeof content === 'string' ? content : JSON.stringify(content); const f = new File([text], name, {type:'application/json'}); Object.defineProperty(f,'text',{value:async()=>text}); return f; };
+describe('complete upload journey', () => {
+  it('compares split followers, switches tabs, searches, copies, sorts, and clears all state', async () => {
+    const user = userEvent.setup(); render(<App/>);
+    expect(screen.getByRole('button', {name:'Compare Lists'})).toBeDisabled();
+    await user.upload(screen.getByLabelText('Upload followers files'), [file('followers_1.json', data('Alice','Bob')), file('followers_2.json', data('ALICE','Cara'))]);
+    await user.upload(screen.getByLabelText('Upload following files'), file('following.json', {relationships_following:data('alice','Dylan')}));
+    await waitFor(() => expect(screen.getByRole('button', {name:'Compare Lists'})).toBeEnabled());
+    await user.click(screen.getByRole('button', {name:'Compare Lists'}));
+    expect(await screen.findByRole('heading', {name:/Your Follow Summary/})).toBeInTheDocument();
+    expect(screen.getByText('@Dylan')).toBeInTheDocument();
+    const link = screen.getByRole('link', {name:'Open Dylan on Instagram (new tab)'}); expect(link).toHaveAttribute('rel','noopener noreferrer');
+    await user.click(screen.getByRole('button', {name:'Copy Dylan'}));
+    expect(await navigator.clipboard.readText()).toBe('Dylan'); expect(screen.getByRole('status')).toHaveTextContent('Copied @Dylan');
+    await user.click(screen.getByRole('tab', {name:/You Don’t Follow Back/}));
+    expect(screen.getByText('@Bob')).toBeInTheDocument(); expect(screen.getByText('@Cara')).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', {name:'Sort usernames'}),'za');
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')[0]).toHaveTextContent('@Cara');
+    await user.type(screen.getByRole('textbox', {name:'Search usernames'}),'@BO');
+    expect(screen.queryByText('@Cara')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', {name:'Start Over'}));
+    expect(screen.getByRole('button', {name:'Compare Lists'})).toBeDisabled();
+    expect(screen.queryByRole('button', {name:'Remove followers_1.json'})).not.toBeInTheDocument();
+  });
+  it('prevents incomplete comparisons until invalid files are removed, including dropped non-JSON files', async () => {
+    const user = userEvent.setup(); render(<App/>);
+    await user.upload(screen.getByLabelText('Upload followers files'), [file('followers_1.json',data('alice')),file('broken.json','{bad')]);
+    await user.upload(screen.getByLabelText('Upload following files'),file('following.json',{relationships_following:data('alice')}));
+    expect(await screen.findByText(/This file is not valid JSON/)).toBeInTheDocument();
+    expect(screen.getByRole('button', {name:'Compare Lists'})).toBeDisabled();
+    await user.click(screen.getByRole('button',{name:'Remove broken.json'}));
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Compare Lists'})).toBeEnabled());
+    fireEvent.drop(screen.getByRole('region',{name:'Followers'}),{dataTransfer:{files:[file('archive.zip','hi')]}});
+    expect(await screen.findByText(/Choose a .json file/)).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'Compare Lists'})).toBeDisabled();
+  });
+  it('reports swapped files and lets users remove a parsing file safely', async () => {
+    const user = userEvent.setup(); render(<App/>);
+    await user.upload(screen.getByLabelText('Upload followers files'),file('following.json',{relationships_following:data('alice')}));
+    expect(await screen.findByText(/This looks like a following file/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button',{name:'Remove following.json'}));
+    let finish!: (value: string)=>void;
+    const slow = new File(['x'],'slow.json',{type:'application/json'});
+    Object.defineProperty(slow,'text',{value:()=>new Promise<string>(resolve=>{finish=resolve;})});
+    await user.upload(screen.getByLabelText('Upload followers files'),slow);
+    await user.click(screen.getByRole('button',{name:'Remove slow.json'}));
+    finish(JSON.stringify(data('alice')));
+    await waitFor(()=>expect(screen.queryByText('slow.json')).not.toBeInTheDocument());
+    expect(screen.getByRole('button',{name:'Compare Lists'})).toBeDisabled();
+  });
+  it('limits rendered accounts to 100 and supports paging and search reset', async () => {
+    const user = userEvent.setup();
+    render(<UserList accounts={Array.from({length:251},(_,i)=>({username:`user${String(i).padStart(3,'0')}`,displayName:`user${String(i).padStart(3,'0')}`}))} description="All accounts" empty="None" notify={vi.fn()}/>);
+    expect(screen.getAllByRole('listitem')).toHaveLength(100);
+    await user.click(screen.getByRole('button',{name:'Next page'})); expect(screen.getByText('@user100')).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox',{name:'Search usernames'}),'user250'); expect(screen.getAllByRole('listitem')).toHaveLength(1); expect(screen.getByText('@user250')).toBeInTheDocument();
+  });
+});

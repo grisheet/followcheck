@@ -1,0 +1,2 @@
+import { ListChecks, ShieldCheck } from 'lucide-react';
+export function Header() { return <header className="header"><a className="brand" href={import.meta.env.BASE_URL} aria-label="FollowCheck home"><span className="brand-mark"><ListChecks size={23}/></span>FollowCheck<span className="brand-dot">.</span></a><span className="privacy-badge"><ShieldCheck size={15}/><span>Private by design</span></span></header>; }
