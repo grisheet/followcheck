@@ -1,0 +1,39 @@
+name: Import verified FollowCheck source
+on:
+  push:
+    paths: [.github/workflows/import.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and extract authored source
+        run: |
+          echo 'ec9dc63fe2330ccba77e01d0681d09428370fe9a625b0f24555ea18aa3fede0c  followcheck-source.zip' | sha256sum -c -
+          python - <<'PY'
+          from pathlib import PurePosixPath
+          from zipfile import ZipFile
+          with ZipFile('followcheck-source.zip') as z:
+              for entry in z.namelist():
+                  p = PurePosixPath(entry)
+                  assert not p.is_absolute() and '..' not in p.parts and '.git' not in p.parts and '.github' not in p.parts, entry
+              z.extractall('.')
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified source files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm followcheck-source.zip
+          git add .gitignore README.md index.html package.json package-lock.json tsconfig.json vite.config.ts vitest.config.ts src public samples tests
+          git commit -m 'Add complete tested FollowCheck application'
+          git push origin HEAD:main
